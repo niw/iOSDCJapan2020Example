@@ -9,7 +9,11 @@ import UIKit
 import KeyboardGuide
 
 class ViewController: UIViewController {
-    var doneButton: UIBarButtonItem!
+    private let maximumLength = 300
+
+    private var doneButton: UIBarButtonItem?
+    private var label: UILabel?
+    private var textView: UITextView?
 
     init() {
         super.init(nibName: nil, bundle: nil)
@@ -25,11 +29,6 @@ class ViewController: UIViewController {
     required init?(coder: NSCoder) {
         fatalError()
     }
-
-    private let maxLength = 300
-
-    var label: UILabel?
-    var textView: UITextView?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -80,20 +79,21 @@ class ViewController: UIViewController {
     }
 
     private func update() {
-        guard let textView = textView,
+        guard let doneButton = doneButton,
+              let textView = textView,
               let label = label else {
             return
         }
 
-        let remainingCount = maxLength - textView.text.utf16.count
+        let remainingCount = maximumLength - textView.text.unicodeScalars.count
         if remainingCount < 0 {
+            doneButton.isEnabled = false
             label.text = "\(-remainingCount) 文字超過"
             label.textColor = .systemRed
-            doneButton.isEnabled = false
         } else {
+            doneButton.isEnabled = true
             label.text = "残り \(remainingCount)文字"
             label.textColor = .label
-            doneButton.isEnabled = true
         }
     }
 
@@ -118,7 +118,7 @@ extension ViewController: NSTextStorageDelegate {
 
         let string = textStorage.string
         DispatchQueue.global(qos: .utility).async {
-            let overflowedCount = min(self.maxLength - string.unicodeScalars.count, 0)
+            let overflowedCount = min(self.maximumLength - string.unicodeScalars.count, 0)
             let overflowedBeginIndex = string.unicodeScalars.index(string.unicodeScalars.endIndex, offsetBy: overflowedCount)
             let overflowedBeginOffset = overflowedBeginIndex.utf16Offset(in: string)
             let overflowedEndOffset = string.unicodeScalars.endIndex.utf16Offset(in: string)
@@ -145,8 +145,10 @@ extension ViewController: NSTextStorageDelegate {
 // MARK: -
 
 extension ViewController: UITextViewDelegate {
-    func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-        if range.length == 0 && text.length == 0 {
+    func textView(_ textView: UITextView,
+                  shouldChangeTextIn range: NSRange,
+                  replacementText text: String) -> Bool {
+        if range.length == 0 && text.isEmpty {
             setNeedsUpdate()
         }
         return true
@@ -160,4 +162,3 @@ extension ViewController: UITextViewDelegate {
         setNeedsUpdate()
     }
 }
-
